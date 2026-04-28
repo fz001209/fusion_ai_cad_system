@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Function Plan Schema",
+  "description": "Schema for function execution plan (geometry + assembly steps)",
+  "type": "object",
+  "required": ["metadata", "steps"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["plan_id", "schema_version", "created_at", "author"],
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "description": "Unique plan identifier"
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "Schema version (e.g., '1.0')"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp"
+        },
+        "author": {
+          "type": "string",
+          "description": "Agent or system that created this plan"
+        },
+        "capability_registry": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path to functions.json registry"
+            }
+          }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional notes about the plan"
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "description": "Ordered list of function execution steps",
+      "items": {
+        "type": "object",
+        "required": ["id", "function", "inputs"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique step identifier"
+          },
+          "function": {
+            "type": "string",
+            "description": "Function name (must be in registry)"
+          },
+          "inputs": {
+            "type": "object",
+            "description": "Function input parameters"
+          },
+          "outputs": {
+            "type": "object",
+            "description": "Expected output variables (optional)"
+          },
+          "capture": {
+            "type": "object",
+            "description": "Variable capture configuration",
+            "properties": {
+              "vars": {
+                "type": "object",
+                "description": "Map output keys to variable names"
+              }
+            }
+          },
+          "depends_on": {
+            "type": "array",
+            "description": "List of step IDs this step depends on",
+            "items": {
+              "type": "string"
+            }
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable step description"
+          }
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Optional artifacts metadata"
+    }
+  }
+}
+

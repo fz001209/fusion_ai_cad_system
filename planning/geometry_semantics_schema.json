@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "geometry_semantics_schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "metadata": {"type": "object", "additionalProperties": true},
+    "parts": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": true}
+    },
+    "subassemblies": {
+      "type": "array",
+      "items": {"type": "object", "additionalProperties": true}
+    },
+    "connection_placements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "connection_id": {"type": "string"},
+          "placement_intent": {"type": ["object", "null"]},
+          "location": {"type": ["object", "null"]},
+          "derived_changes": {"type": ["array", "null"]}
+        }
+      }
+    }
+  }
+}

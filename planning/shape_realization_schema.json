@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "planning/shape_realization_schema.json",
+  "title": "Shape Realization Contract Schema",
+  "type": "object",
+  "required": [
+    "metadata"
+  ],
+  "properties": {
+    "metadata": {
+      "type": "object"
+    },
+    "component_realizations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "component_id",
+          "modeling_strategy"
+        ],
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "contract_pattern_used": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "modeling_strategy": {
+            "type": "object",
+            "required": [
+              "primary_method"
+            ],
+            "properties": {
+              "primary_method": {
+                "type": "string",
+                "enum": [
+                  "EXTRUDE",
+                  "REVOLVE",
+                  "LOFT",
+                  "SWEEP"
+                ]
+              },
+              "construction_method": {
+                "type": "string"
+              },
+              "axis": {},
+              "revolve_axis": {},
+              "revolve_angle": {},
+              "revolve_angle_rad": {},
+              "angle_rad": {},
+              "direction": {},
+              "distance": {},
+              "extrude_distance": {}
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "primary_method": {
+                      "const": "REVOLVE"
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "direction"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "distance"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "extrude_distance"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "primary_method": {
+                      "const": "EXTRUDE"
+                    }
+                  }
+                },
+                "then": {
+                  "not": {
+                    "anyOf": [
+                      {
+                        "required": [
+                          "axis"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "revolve_axis"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "revolve_angle"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "revolve_angle_rad"
+                        ]
+                      },
+                      {
+                        "required": [
+                          "angle_rad"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "component_id",
+          "modeling_strategy",
+          "features"
+        ],
+        "properties": {
+          "component_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "modeling_strategy": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/Feature"
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "anyOf": [
+    {"required": ["component_realizations"]},
+    {"required": ["parts"]}
+  ],
+  "$defs": {
+    "HoleAnchor": {
+      "type": "object",
+      "required": ["face_interface_id", "normal_hint", "side_hint"],
+      "properties": {
+        "face_interface_id": {"type": "string", "minLength": 1},
+        "normal_hint": {
+          "type": "object",
+          "required": ["mode"],
+          "properties": {
+            "mode": {"type": "string", "enum": ["FACE_NORMAL", "AXIS_INTERFACE", "WORLD_AXIS", "COMPONENT_AXIS"]},
+            "axis_interface_id": {"type": "string"},
+            "world_axis": {"type": "string", "enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]},
+            "component_axis": {"type": "string", "enum": ["+X", "-X", "+Y", "-Y", "+Z", "-Z"]}
+          },
+          "additionalProperties": true
+        },
+        "side_hint": {"type": "string", "enum": ["MIN", "MAX", "AUTO"]},
+        "workplane_interface_id": {"type": "string"},
+        "comment": {"type": "string"}
+      },
+      "additionalProperties": true
+    },
+    "Feature": {
+      "type": "object",
+      "required": ["feature_id", "feature_type"],
+      "properties": {
+        "feature_id": {"type": "string", "minLength": 1},
+        "feature_type": {"type": "string", "minLength": 1},
+        "anchor": {"$ref": "#/$defs/HoleAnchor"}
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {"properties": {"feature_type": {"const": "hole"}}},
+          "then": {"required": ["anchor"]}
+        }
+      ]
+    }
+  }
+}

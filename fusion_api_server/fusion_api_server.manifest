@@ -1,0 +1,10 @@
+{
+  "autodeskProduct": "Fusion360",
+  "type": "script",
+  "name": "fusion_api_server",
+  "description": "Fusion plan executor for Fusion AI CAD system",
+  "version": "2.0.0",
+  "author": "fusion_ai_cad_system",
+  "supportedOS": ["windows", "mac"],
+  "runOnStartup": false
+}

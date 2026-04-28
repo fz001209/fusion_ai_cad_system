@@ -1,0 +1,1364 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/cad-knowledge-graph.schema.json",
+  "title": "CAD Knowledge Graph (Product Structure)",
+  "type": "object",
+  "$comment": "Backend-agnostic knowledge graph describing product structure + requirements (NOT modeling steps). STRUCTURAL COMPLETENESS INVARIANT: Every component of type 'bearing', 'shaft', or 'fastener' MUST participate in at least one connection_requirement. Connection_requirements describe abstract required connections (WHAT + WHY). Agent 1 outputs components, connection_requirements, dimensions, standard_parts, and shape semantics. Downstream agents validate and implement geometry/assembly.",
+  "additionalProperties": false,
+  "required": [
+    "components",
+    "connection_requirements"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Version of the KG payload schema (not the JSON Schema draft).",
+      "default": "1.0"
+    },
+    "units": {
+      "type": "object",
+      "description": "Optional global unit conventions for numeric values.",
+      "additionalProperties": false,
+      "properties": {
+        "length": {
+          "type": "string",
+          "description": "Length unit for distances and dimensions.",
+          "enum": [
+            "mm",
+            "cm",
+            "m",
+            "in",
+            "ft"
+          ],
+          "default": "mm"
+        },
+        "angle": {
+          "type": "string",
+          "description": "Angle unit for angular parameters.",
+          "enum": [
+            "deg",
+            "rad"
+          ],
+          "default": "deg"
+        }
+      }
+    },
+    "components": {
+      "type": "array",
+      "description": "List of components/parts/subassemblies in the product structure.",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    },
+    "subassemblies": {
+      "type": "array",
+      "description": "Named mechanical binding units representing physically bound groups of components. A subassembly represents a real mechanical binding (clamping, fastening, cartridge, module), not a purely organizational grouping. CRITICAL: If multiple components are bound together by plates, frames, or fasteners, a subassembly MUST be created to represent this semantic grouping. Subassemblies are strongly recommended but not mandatory for all products.",
+      "minItems": 0,
+      "items": {
+        "$ref": "#/$defs/subassembly"
+      }
+    },
+    "component_hierarchy": {
+      "type": "array",
+      "description": "Optional explicit parent-child hierarchy for grouped assemblies (e.g., wheel parent and its child parts).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "children"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/id"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/id"
+            }
+          }
+        }
+      }
+    },
+    "connection_requirements": {
+      "type": "array",
+      "description": "Abstract required connections between components (Agent 1 output). Specifies WHAT must connect and WHY, with optional constraints. Relation types (HOW) are derived by downstream agents. Each requirement must include: id, between (array of 2+ component IDs), and purpose (semantic reason).",
+      "items": {
+        "$ref": "#/$defs/connection_requirement"
+      }
+    },
+    "relations": {
+      "type": "array",
+      "description": "Concrete relations with specific mechanical types (Agent 2/Agent 4 output). Each relation specifies a mechanical connection between two components with a specific type (fixed_to, rotates_about, supported_by, etc.). Each relation must include: id, type, a (endpoint 1), b (endpoint 2).",
+      "minItems": 0,
+      "items": {
+        "$ref": "#/$defs/relation"
+      }
+    },
+    "standard_parts": {
+      "type": "array",
+      "description": "Standard part selections (Agent 1 output).",
+      "items": {
+        "$ref": "#/$defs/standard_part"
+      }
+    },
+    "patterns": {
+      "type": "array",
+      "description": "Optional: Symmetries, repetitions, and regularities (e.g., rotational_symmetry with count=3).",
+      "items": {
+        "$ref": "#/$defs/pattern"
+      }
+    },
+    "design_intents": {
+      "type": "array",
+      "description": "Optional: High-level design constraints, behaviors, and intents (NOT geometry, but engineering purpose).",
+      "items": {
+        "$ref": "#/$defs/design_intent"
+      }
+    },
+    "root_component_id": {
+      "type": "string",
+      "description": "Optional id of the top-level component (assembly root)."
+    },
+    "intent": {
+      "type": "string",
+      "description": "Optional high-level intent or use case (e.g., '濡ゅ吋顫弨鈧悥顒佹簚閸ｃ劋姹?). Used by planner to infer object class (robot/furniture/aircraft)."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional human/system metadata; ignored by planners unless they opt in.",
+      "additionalProperties": true
+    },
+    "frozen_spec": {
+      "$ref": "#/$defs/frozen_spec"
+    }
+  },
+  "$defs": {
+    "frozen_spec": {
+      "type": "object",
+      "description": "Immutability contract for downstream agents.",
+      "additionalProperties": false,
+      "properties": {
+        "frozen_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": []
+        },
+        "frozen_components": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "default": []
+        },
+        "frozen_connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "default": []
+        },
+        "frozen_checksum": {
+          "type": "string",
+          "description": "Hash of frozen content (format not enforced)."
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "id": {
+      "type": "string",
+      "description": "Stable identifier used to reference nodes across the KG (planner-friendly).",
+      "minLength": 1
+    },
+    "vec3": {
+      "type": "array",
+      "description": "3D vector [x, y, z].",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    },
+    "reference_frame": {
+      "type": "object",
+      "$comment": "A local right-handed frame for the component. Keep this backend-agnostic.",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "x_axis",
+        "y_axis",
+        "z_axis"
+      ],
+      "properties": {
+        "origin": {
+          "$ref": "#/$defs/vec3",
+          "description": "Frame origin in parent/world coordinates."
+        },
+        "x_axis": {
+          "$ref": "#/$defs/vec3",
+          "description": "Unit vector for local +X axis."
+        },
+        "y_axis": {
+          "$ref": "#/$defs/vec3",
+          "description": "Unit vector for local +Y axis."
+        },
+        "z_axis": {
+          "$ref": "#/$defs/vec3",
+          "description": "Unit vector for local +Z axis."
+        }
+      }
+    },
+    "parameter_value": {
+      "$comment": "Parameters are intentionally simple so planners can reason over them.",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Categorical semantic value (e.g., bundle_style/application)."
+        },
+        {
+          "type": "number",
+          "description": "Plain numeric value in the KG's declared units."
+        },
+        {
+          "type": "object",
+          "description": "Numeric value with explicit unit override.",
+          "additionalProperties": false,
+          "required": [
+            "value"
+          ],
+          "properties": {
+            "value": {
+              "type": "number"
+            },
+            "unit": {
+              "type": "string",
+              "description": "Unit label for this value (e.g., mm, in, deg)."
+            },
+            "note": {
+              "type": "string",
+              "description": "Optional brief explanation for planners."
+            }
+          }
+        }
+      ]
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Dimension/feature parameters (e.g., width, thickness, radius).",
+      "$comment": "Use stable, semantic names so planning agents can map intents to parameters.",
+      "additionalProperties": {
+        "$ref": "#/$defs/parameter_value"
+      },
+      "default": {}
+    },
+    "dimensions": {
+      "type": "object",
+      "description": "Authoritative, immutable dimensional parameters inferred by Agent1.",
+      "additionalProperties": {
+        "$ref": "#/$defs/parameter_value"
+      },
+      "default": {}
+    },
+    "dimension_source": {
+      "type": "object",
+      "description": "Per-dimension provenance (input/catalog/default/derived).",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "input",
+            "standard_catalog",
+            "inferred_default",
+            "derived"
+          ]
+        },
+        "derived_from": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "derived_from_component": {
+          "type": "string",
+          "description": "Optional component id used as the derivation source."
+        },
+        "rule_id": {
+          "type": "string",
+          "description": "Optional rule identifier for derived dimensions."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "usable_for_standard_part_selection": {
+          "type": "boolean",
+          "description": "Whether this dimension may be used for standard part selection."
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "source"
+      ]
+    },
+    "dimension_sources": {
+      "type": "object",
+      "description": "Map of dimension name to provenance metadata.",
+      "additionalProperties": {
+        "$ref": "#/$defs/dimension_source"
+      },
+      "default": {}
+    },
+    "shape_semantics": {
+      "type": "object",
+      "description": "Abstract shape description (no coordinates, no CAD steps).",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Shape class (e.g., cylindrical, prismatic, plate, complex)."
+        },
+        "cross_section": {
+          "type": "string",
+          "description": "Cross-section hint (e.g., circular, annular, rectangular)."
+        },
+        "axis": {
+          "type": "string",
+          "description": "Semantic axis identifier (no coordinates)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional human-readable note."
+        }
+      },
+      "required": [
+        "type"
+      ]
+    },
+    "interface_ref": {
+      "type": "object",
+      "description": "Reference to a semantic interface on a component (NOT a CAD face object).",
+      "$comment": "Examples: 'mount_plane', 'left_side', 'seat_top', 'leg_end'.",
+      "additionalProperties": false,
+      "required": [
+        "component_id",
+        "interface_id"
+      ],
+      "properties": {
+        "component_id": {
+          "$ref": "#/$defs/id"
+        },
+        "interface_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Named interface/surface/feature identifier within the component's semantics."
+        }
+      }
+    },
+    "standard_part": {
+      "type": "object",
+      "description": "Standard part selection result (Agent 1 output).",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "part_class",
+        "designation",
+        "quantity"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "fastener",
+            "bearing",
+            "washer",
+            "nut",
+            "spacer",
+            "pin",
+            "key",
+            "spring",
+            "other"
+          ]
+        },
+        "part_class": {
+          "type": "string",
+          "enum": [
+            "fasteners",
+            "bearings",
+            "others"
+          ],
+          "description": "Mandatory high-level bucket for standard-part pipeline routing."
+        },
+        "designation": {
+          "type": "string",
+          "description": "Standard designation (e.g., ISO 4762 M4x12, 608ZZ)."
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "dimensions": {
+          "type": "object",
+          "description": "Optional: resolved dimensional facts for the selected standard part (e.g., bearing d/D/B).",
+          "additionalProperties": {
+            "$ref": "#/$defs/parameter_value"
+          }
+        },
+        "applied_to": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "Connection or subassembly ids this standard part applies to."
+        },
+        "selection_rationale": {
+          "type": "string"
+        }
+      }
+    },
+    "fastener_instance": {
+      "type": "object",
+      "description": "One fastener/auxiliary instance in a fastener bundle (semantic only; may be modeled as placeholder geometry).",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "designation",
+        "quantity"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "bolt",
+            "screw",
+            "nut",
+            "washer",
+            "pin",
+            "key",
+            "other"
+          ]
+        },
+        "designation": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "nominal_diameter_mm": {
+          "type": "number"
+        },
+        "length_mm": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "fastener_pattern": {
+      "type": "object",
+      "description": "Semantic pattern definition for a fastener bundle (no coordinates).",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "count",
+        "hole_diameter_mm"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "bolt_circle",
+            "circular_n",
+            "linear_n",
+            "single",
+            "unknown"
+          ]
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "pcd_mm": {
+          "type": "number"
+        },
+        "phase_deg": {
+          "type": "number"
+        },
+        "hole_diameter_mm": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "component": {
+      "type": "object",
+      "description": "A component node representing a part or subassembly. PURELY SEMANTIC: contains no coordinates, frames, axes, or geometric placement.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "kind",
+        "must_model",
+        "part_kind",
+        "modeling_policy",
+        "parameters",
+        "dimensions",
+        "shape_semantics"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Component category (e.g., 'seat', 'leg', 'backrest', 'wheel', 'axle')."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "assembly_node",
+            "part"
+          ],
+          "description": "Hard contract: 'assembly_node' is hierarchy-only (no geometry output); 'part' is a real geometric part (may be simplified)."
+        },
+        "must_model": {
+          "type": "boolean",
+          "description": "Hard contract: only components with kind='part' and must_model=true are eligible for downstream geometry output (Agent2/3)."
+        },
+        "part_kind": {
+          "type": "string",
+          "enum": [
+            "structural",
+            "connector",
+            "bearing",
+            "shaft",
+            "subassembly",
+            "other",
+            "fastener_bundle",
+            "bolt",
+            "nut",
+            "washer",
+            "pin",
+            "key",
+            "spacer"
+          ],
+          "description": "Contract-level part category used by downstream closure and assembly reasoning."
+        },
+        "modeling_policy": {
+          "type": "string",
+          "enum": [
+            "must_model",
+            "simplified_model",
+            "reference_only",
+            "container_only"
+          ],
+          "description": "Modeling policy frozen by Agent1. Bearings should use simplified_model; hierarchy containers use container_only."
+        },
+        "role": {
+          "type": "string",
+          "description": "Optional functional role of this component in the assembly (e.g., 'load_bearing', 'rotating_interface', 'fixation', 'spacing', 'alignment', 'structural')."
+        },
+        "is_container": {
+          "type": "boolean",
+          "description": "Optional flag indicating this component is a container/assembly that organizes child components. Containers may have minimal dimensions (only anchor points). Default: false for leaf components, true for assembly-type components."
+        },
+        "is_modeling_unit": {
+          "type": "boolean",
+          "description": "Optional flag indicating this component is a geometric modeling unit whose dimensions must be complete and derivable. Only is_modeling_unit=true components must have non-empty dimensions. Default: true for leaf components, false for pure organizational containers."
+        },
+        "position_parent": {
+          "$ref": "#/$defs/id",
+          "description": "Optional reference to parent component for hierarchical positioning. Indicates this component's position is relative to or dependent on position_parent."
+        },
+        "role_in_parent": {
+          "type": "string",
+          "description": "Optional semantic role of this child inside its parent assembly (e.g., rim/tire/hub/axle)."
+        },
+        "is_container_only": {
+          "type": "boolean",
+          "description": "Optional flag indicating this component is used as assembly container/reference and should not be modeled directly."
+        },
+        "has_geometry": {
+          "type": "boolean",
+          "description": "Optional explicit geometry flag. false means this node has no usable geometric host surface and must be excluded from geometric host selection."
+        },
+        "position_offset": {
+          "type": "object",
+          "description": "Optional semantic positioning hint relative to position_parent (e.g., 'at_end', 'centered', 'offset_by_length').",
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Semantic description of position relative to parent (e.g., 'mounted at end of arm', 'centered on hub')"
+            },
+            "along_axis": {
+              "type": "string",
+              "description": "Optional reference to component dimension axis (e.g., 'length', 'diameter', 'width')"
+            },
+            "offset_amount": {
+              "type": "number",
+              "description": "Optional numeric offset (in assembly units)"
+            }
+          }
+        },
+        "parameters": {
+          "$ref": "#/$defs/parameters"
+        },
+        "dimensions": {
+          "$ref": "#/$defs/dimensions"
+        },
+        "dimension_sources": {
+          "$ref": "#/$defs/dimension_sources"
+        },
+        "shape_semantics": {
+          "$ref": "#/$defs/shape_semantics"
+        },
+        "fastener_instances": {
+          "type": "array",
+          "description": "Optional: Structured contents of a fastener bundle (bolt/nut/washer/etc) with quantities.",
+          "items": {
+            "$ref": "#/$defs/fastener_instance"
+          }
+        },
+        "pattern": {
+          "$ref": "#/$defs/fastener_pattern"
+        },
+        "parent_id": {
+          "$ref": "#/$defs/id",
+          "description": "Optional parent component id for product structure nesting."
+        },
+        "instanced_from": {
+          "$ref": "#/$defs/id",
+          "description": "Optional prototype component id for repeated instance modeling."
+        },
+        "definition_id": {
+          "$ref": "#/$defs/id",
+          "description": "Optional geometric definition id. Multiple instances may share one definition_id."
+        },
+        "instance_id": {
+          "$ref": "#/$defs/id",
+          "description": "Optional instance identity id for assembly occurrence mapping."
+        },
+        "interfaces": {
+          "type": "array",
+          "description": "Optional list of semantic interfaces available for relations. Purely semantic: identifies functional touchpoints, NOT geometry.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "interface_id"
+            ],
+            "properties": {
+              "interface_id": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Stable semantic name for a functional interface/touchpoint on this component (e.g., 'mount_face', 'rotation_axis', 'contact_surface')."
+              },
+              "description": {
+                "type": "string",
+                "description": "Optional human-readable explanation of this interface's purpose (semantic only, no coordinates)."
+              }
+            }
+          }
+        }
+      }
+    },
+    "subassembly": {
+      "type": "object",
+      "description": "A named grouping of related components (semantic assembly hierarchy).",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "component_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of this subassembly (e.g., 'wheel_hub_assembly')."
+        },
+        "component_ids": {
+          "type": "array",
+          "description": "List of component ids that form this subassembly.",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "role": {
+          "type": "string",
+          "description": "Optional functional role of this subassembly."
+        }
+      }
+    },
+    "pattern": {
+      "type": "object",
+      "description": "A symmetry or repetition of already-connected components. Patterns describe organizational structure only and MUST NOT define placement or structural relationships on their own.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "count",
+        "component_ids"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "rotational_symmetry",
+            "mirror_symmetry",
+            "bilateral_symmetry",
+            "linear_repetition",
+            "radial_repetition"
+          ],
+          "description": "Type of pattern or symmetry."
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 2,
+          "description": "Number of repeated instances (e.g., 3 for tri-fold rotational symmetry)."
+        },
+        "component_ids": {
+          "type": "array",
+          "description": "Component ids participating in this pattern.",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "axis": {
+          "type": "string",
+          "description": "Optional semantic axis reference (no coordinates)."
+        },
+        "applies_to": {
+          "type": "string",
+          "description": "Optional semantic target of the pattern."
+        },
+        "canonical_instance": {
+          "type": "string",
+          "description": "Optional canonical instance id."
+        },
+        "prototype": {
+          "$ref": "#/$defs/id",
+          "description": "Optional prototype component id used for instance reuse."
+        },
+        "instances": {
+          "type": "array",
+          "description": "Optional ordered instance ids for this pattern.",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable explanation of the pattern (organizational meaning only)."
+        }
+      }
+    },
+    "connection_decision": {
+      "type": "object",
+      "description": "Frozen connection decision (Agent 1).",
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": [
+            "bolted_rigid",
+            "bolted_hinged",
+            "pinned",
+            "press_fit",
+            "bearing_seat",
+            "keyed",
+            "welded",
+            "adhesive"
+          ]
+        },
+        "fastener_ref_component_id": {
+          "$ref": "#/$defs/id"
+        },
+        "fastener_standard": {
+          "type": "string"
+        },
+        "fastener_size": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "count_policy": {
+          "type": "string",
+          "enum": [
+            "defer_to_agent2"
+          ]
+        },
+        "stackup": {
+          "type": "string",
+          "enum": [
+            "through_nut",
+            "tapped",
+            "insert",
+            "riveted",
+            "unknown"
+          ]
+        },
+        "fit_policy": {
+          "type": "string",
+          "enum": [
+            "clearance",
+            "close_fit",
+            "tapped",
+            "press",
+            "unknown"
+          ]
+        },
+        "lock": {
+          "type": "boolean"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      }
+    },
+    "location_intent": {
+      "type": "object",
+      "description": "High-level location intent (no coordinates).",
+      "additionalProperties": false,
+      "properties": {
+        "pattern_type": {
+          "type": "string",
+          "enum": [
+            "rectangular_4",
+            "rectangular_n",
+            "circular_n",
+            "linear_n",
+            "single"
+          ]
+        },
+        "symmetry": {
+          "type": "string",
+          "enum": [
+            "about_center",
+            "about_axis",
+            "about_midplane",
+            "none"
+          ]
+        },
+        "reference": {
+          "type": "string",
+          "enum": [
+            "component_center",
+            "axis",
+            "datum_face",
+            "edge_midpoints",
+            "unknown"
+          ]
+        },
+        "constraints": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "min_edge_distance_mm": {
+              "type": "number"
+            },
+            "min_pitch_mm": {
+              "type": "number"
+            },
+            "clearance_mm": {
+              "type": "number"
+            }
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "design_intent": {
+      "type": "object",
+      "description": "High-level design constraint, behavior, or intent (engineering purpose, NOT geometry or mechanical facts). CRITICAL: design_intents MUST NOT restate relations or describe mechanical facts. Examples of FORBIDDEN design_intents: 'wheel rotates about axle', 'arm is fixed to hub' 閳?these MUST be relations instead. design_intents may only express: purpose, requirement, constraint, or rationale (e.g., 'minimize weight', 'ensure smooth rotation', 'maintain 120-degree symmetry').",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "description"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "type": "string",
+          "description": "Category of intent (e.g., 'motion_requirement', 'structural_requirement', 'performance_constraint', 'assembly_purpose')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Semantic explanation of the design intent (purpose/requirement/constraint/rationale only, NOT mechanical facts)."
+        },
+        "component_ids": {
+          "type": "array",
+          "description": "Optional component ids involved in this intent.",
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "parameters": {
+          "$ref": "#/$defs/parameters"
+        }
+      }
+    },
+    "connection_requirement": {
+      "type": "object",
+      "description": "Abstract required connection between components (AGENT 1 OUTPUT). Specifies WHAT must be connected and WHY, but NOT the specific relation type (HOW). Relation type determination is Agent 2's responsibility. Each connection_requirement includes: id (requirement identifier), between (array of 2+ component IDs that must be connected), purpose (semantic reason like 'rotation', 'load_support', 'fixation', 'spacing', 'alignment'), and roles (semantic roles derived from purpose). NO 'type' field閳ユ敄his is intentional; the specific relation type will be determined downstream.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "between",
+        "purpose",
+        "roles",
+        "constraint_intent",
+        "dof",
+        "mating_features"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "between": {
+          "type": "array",
+          "description": "Array of 2 or more component IDs that must be mechanically connected per this requirement.",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Semantic description of WHY these components must connect (e.g., 'rotation', 'load_support', 'structural_fixation', 'spacing', 'alignment', 'fastening_mechanism'). Use semantic language, NOT relation type names."
+        },
+        "roles": {
+          "type": "array",
+          "description": "Semantic roles derived from purpose (e.g., mounting, rotation, support, fixation, torque_transfer).",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "constraint_intent": {
+          "type": "string",
+          "enum": [
+            "rigid",
+            "revolute",
+            "support",
+            "clamping",
+            "fastened",
+            "alignment",
+            "spacing",
+            "custom"
+          ],
+          "description": "Downstream-facing abstract mate intent, frozen by Agent1."
+        },
+        "dof": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "translation",
+            "rotation"
+          ],
+          "properties": {
+            "translation": {
+              "type": "string",
+              "enum": [
+                "locked",
+                "free",
+                "limited"
+              ]
+            },
+            "rotation": {
+              "type": "string",
+              "enum": [
+                "locked",
+                "free",
+                "limited"
+              ]
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        },
+        "mating_features": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "Abstract mating feature hints for downstream interface/marker synthesis."
+        },
+        "connection_decision": {
+          "$ref": "#/$defs/connection_decision"
+        },
+        "constraints": {
+          "type": "object",
+          "description": "Optional mechanical constraints for this connection (semantic level, no coordinates). Examples: coaxial_required, must_rotate, concentric_required, axial_preload, gap specification, etc.",
+          "additionalProperties": true,
+          "properties": {
+            "must_rotate": {
+              "type": "boolean"
+            },
+            "must_be_rigid": {
+              "type": "boolean"
+            },
+            "must_support_load": {
+              "type": "boolean"
+            },
+            "must_limit_axial": {
+              "type": "boolean"
+            },
+            "allow_rotation": {
+              "type": "boolean"
+            },
+            "lock_translation": {
+              "type": "boolean"
+            },
+            "coaxial_required": {
+              "type": "boolean"
+            },
+            "concentric_required": {
+              "type": "boolean"
+            },
+            "axial_retention": {
+              "type": "boolean"
+            },
+            "axial_preload": {
+              "type": "boolean"
+            },
+            "gap": {
+              "type": [
+                "number",
+                "string"
+              ]
+            },
+            "notes": {
+              "type": "string"
+            }
+          }
+        },
+        "location_intent": {
+          "$ref": "#/$defs/location_intent"
+        },
+        "rewired_from": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "original_between",
+            "reason"
+          ],
+          "properties": {
+            "original_between": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "$ref": "#/$defs/id"
+              }
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional detailed explanation of this requirement."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Optional confidence score for inferred connection_requirements."
+        },
+        "connection_semantics": {
+          "$ref": "#/$defs/connection_semantics_contract"
+        }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "description": "Concrete mechanical relation between two components (Agent 2/Agent 4 output). Each relation specifies exactly two endpoints with a specific attachment type (fixed_to, rotates_about, supported_by, etc.). Endpoints are identified by component_id and interface_id for precise semantic alignment.",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "a",
+        "b"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "type": "string",
+          "description": "Mechanical relation type (e.g., 'fixed_to', 'rotates_about', 'supported_by'). Derived by Agent 2/4 from connection_requirement.purpose through engineering analysis. Agent 1 does NOT decide relation types.",
+          "enum": [
+            "rigid_attachment",
+            "rotation",
+            "support",
+            "clamping",
+            "fastened_joint",
+            "axial_constraint",
+            "alignment",
+            "fixed_to",
+            "rotates_about",
+            "supported_by",
+            "clamped_by"
+          ]
+        },
+        "a": {
+          "type": "object",
+          "description": "First endpoint of the relation.",
+          "additionalProperties": false,
+          "required": [
+            "component_id",
+            "interface_id"
+          ],
+          "properties": {
+            "component_id": {
+              "$ref": "#/$defs/id"
+            },
+            "interface_id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Named interface on component A where the relation attaches. Interface naming is defined/generated by Agent 2/Agent 4 (NOT Agent 1)."
+            }
+          }
+        },
+        "b": {
+          "type": "object",
+          "description": "Second endpoint of the relation.",
+          "additionalProperties": false,
+          "required": [
+            "component_id",
+            "interface_id"
+          ],
+          "properties": {
+            "component_id": {
+              "$ref": "#/$defs/id"
+            },
+            "interface_id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Named interface on component B where the relation attaches. Interface naming is defined/generated by Agent 2/Agent 4 (NOT Agent 1)."
+            }
+          }
+        }
+      }
+    },
+    "connection_anchor": {
+      "type": "object",
+      "description": "Abstract semantic anchor for a connection contract. No coordinates are allowed.",
+      "additionalProperties": false,
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "axis": {
+          "type": "string",
+          "enum": [
+            "x",
+            "y",
+            "z"
+          ]
+        },
+        "radius_mm": {
+          "type": "number"
+        },
+        "inset_mm": {
+          "type": "number"
+        },
+        "phase_deg": {
+          "type": "number"
+        },
+        "phase_rad": {
+          "type": "number"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "connection_semantics_contract": {
+      "type": "object",
+      "description": "Frozen semantic contract for how a required connection must be realized. This remains abstract (no coordinates), but it MUST be specific enough that downstream agents can execute it without inventing a different mechanism or anchor interpretation.",
+      "additionalProperties": false,
+      "required": [
+        "connection_mechanism",
+        "relation_type",
+        "reference_component_id",
+        "moving_component_id",
+        "reference_anchor",
+        "moving_anchor",
+        "reference_interface_hint",
+        "moving_interface_hint",
+        "orientation_policy",
+        "geometric_semantics"
+      ],
+      "properties": {
+        "connection_mechanism": {
+          "type": "string",
+          "enum": [
+            "bolted_mount",
+            "radial_member_bolted_mount",
+            "axial_face_bolted_mount",
+            "axial_stack_locator",
+            "bonded_tread",
+            "bonded_mount",
+            "press_fit",
+            "shaft_bore_fit",
+            "companion_rotation_relation",
+            "welded_mount",
+            "generic_mount"
+          ]
+        },
+        "relation_type": {
+          "type": "string",
+          "description": "Abstract attachment semantics such as support_member_distal_attachment, axial_face_perimeter_mount, radial_member_proximal_mount, shaft_axis_to_bore, bonded_tread_wrap."
+        },
+        "reference_component_id": {
+          "$ref": "#/$defs/id"
+        },
+        "moving_component_id": {
+          "$ref": "#/$defs/id"
+        },
+        "reference_anchor": {
+          "$ref": "#/$defs/connection_anchor"
+        },
+        "moving_anchor": {
+          "$ref": "#/$defs/connection_anchor"
+        },
+        "reference_interface_hint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Frozen interface hint on the reference component, such as axial_end_face_max, radial_outer_face, bore_axis, distal_mount_face."
+        },
+        "moving_interface_hint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Frozen interface hint on the moving or attached component."
+        },
+        "assembly_reference_interface_hint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional assembly-specific interface hint for the reference component when feature-generation and assembly mating must use different interfaces."
+        },
+        "assembly_moving_interface_hint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Optional assembly-specific interface hint for the moving component when feature-generation and assembly mating must use different interfaces."
+        },
+        "orientation_policy": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Abstract orientation rule, e.g. preserve, inherit_reference_yaw, radial_from_reference_center, coaxial_align."
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Why this mechanism and anchor pairing is mechanically correct."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "geometric_semantics": {
+          "$ref": "#/$defs/connection_geometric_semantics"
+        }
+      }
+    },
+    "connection_geometric_semantics": {
+      "type": "object",
+      "description": "Mechanism-specific geometric execution semantics. This complements natural connection intent with enough detail that downstream agents can execute the same mechanism without inventing a different mounting style or hole pattern.",
+      "additionalProperties": false,
+      "required": [
+        "contact_model",
+        "reference_feature_strategy",
+        "moving_feature_strategy",
+        "pattern_policy"
+      ],
+      "properties": {
+        "contact_model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reference_feature_strategy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "moving_feature_strategy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pattern_policy": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pattern_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "hardware_layout": {
+          "type": "string"
+        },
+        "retention_strategy": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "support_topology": {
+          "type": "string"
+        },
+        "anti_rotation_topology": {
+          "type": "string"
+        },
+        "mount_side": {
+          "type": "string"
+        },
+        "axial_stack_policy": {
+          "type": "string"
+        },
+        "clearance_policy": {
+          "type": "string"
+        },
+        "requires_axial_offset": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
