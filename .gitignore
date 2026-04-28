@@ -1,0 +1,32 @@
+# Local secrets
+.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Python tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Logs
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Local VS Code settings
+.vscode/
+
+# Runtime outputs
+execution/runs/
+
+# Local exports / archives (if any)
+artifacts/
+archive/
